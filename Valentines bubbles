@@ -1,0 +1,87 @@
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Valentine Bubble Shooter</title>
+<style>
+body{
+  margin:0;
+  font-family:'Comic Sans MS',cursive;
+  background:radial-gradient(circle at top,#ffb6c1,#ff4d6d);
+  overflow:hidden;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}.background-hearts span{ position:absolute; color:rgba(255,255,255,0.25); animation:float 8s infinite ease-in-out; }
+
+@keyframes float{ 0%{transform:translateY(100vh) scale(.5);opacity:0} 50%{opacity:.6} 100%{transform:translateY(-10vh) scale(1.2);opacity:0} }
+
+canvas{ background:rgba(255,255,255,.92); border-radius:45% 45% 50% 50%; box-shadow:0 0 30px rgba(255,0,80,.6) }
+
+.menu{ position:absolute; text-align:center; }
+
+button{ background:#ff4d6d; border:none; color:white; padding:12px 22px; font-size:18px; border-radius:20px; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.3) }
+
+button:hover{transform:scale(1.05)}
+
+.message{ position:absolute; text-align:center; font-size:30px; color:#b3003c; background:rgba(255,255,255,.95); padding:30px 40px; border-radius:22px; display:none; animation:pop .7s ease }
+
+@keyframes pop{0%{transform:scale(.5)}100%{transform:scale(1)}} </style>
+
+</head>
+<body><div class="background-hearts"></div><div class="menu" id="startMenu">
+  <button onclick="startGame()">💘 start game 💘</button>
+</div><canvas id="game" width="360" height="500" style="display:none"></canvas>
+
+<div class="menu" id="restartMenu" style="display:none">
+  <div class="message">💖 Will you be my Valentine Sweetiepie? 💖</div><br>
+  <button onclick="restartGame()">🔁 restart</button>
+</div><audio id="popSound" src="https://assets.mixkit.co/sfx/preview/mixkit-game-ball-tap-2073.mp3"></audio>
+
+<script>
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+const popSound=document.getElementById('popSound');
+
+const bubbles=['❤️','🍫','🌹','🧸'];
+const rows=6,cols=7,radius=18;
+let grid=[],particles=[];
+let playing=false;
+
+let arrow={x:canvas.width/2,y:canvas.height-50,dx:0,dy:0,bubble:randomBubble(),moving:false};
+
+function randomBubble(){return bubbles[Math.floor(Math.random()*bubbles.length)]}
+
+function initGrid(){grid=[];for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)grid.push({x:60+c*40,y:80+r*40,bubble:randomBubble(),active:true})}
+
+function drawHeartBox(){ctx.fillStyle='#ffe6eb';ctx.beginPath();ctx.moveTo(180,140);ctx.bezierCurveTo(120,40,0,140,180,300);ctx.bezierCurveTo(360,140,240,40,180,140);ctx.fill()}
+
+function drawGrid(){grid.forEach(b=>{if(!b.active)return;ctx.beginPath();ctx.arc(b.x,b.y,radius,0,Math.PI*2);ctx.fillStyle='#fff0f5';ctx.fill();ctx.font='18px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(b.bubble,b.x,b.y+1)})}
+
+function drawArrow(){ctx.font='26px serif';ctx.textAlign='center';ctx.fillText('🏹',arrow.x,arrow.y+10);ctx.beginPath();ctx.arc(arrow.x,arrow.y-25,radius,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.font='18px serif';ctx.fillText(arrow.bubble,arrow.x,arrow.y-25)}
+
+function createExplosion(x,y){for(let i=0;i<12;i++)particles.push({x,y,dx:(Math.random()-.5)*4,dy:(Math.random()-.5)*4,life:30})}
+
+function drawParticles(){particles.forEach(p=>{ctx.fillStyle='rgba(255,77,109,.8)';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();p.x+=p.dx;p.y+=p.dy;p.life--});particles=particles.filter(p=>p.life>0)}
+
+function findMatches(t){return grid.filter(b=>b.active&&b.bubble===t.bubble&&Math.hypot(b.x-t.x,b.y-t.y)<radius*2.5)}
+
+function updateArrow(){if(!arrow.moving)return;arrow.x+=arrow.dx;arrow.y+=arrow.dy;grid.forEach(b=>{if(!b.active)return;if(Math.hypot(b.x-arrow.x,b.y-arrow.y)<radius*2){const m=findMatches(b);if(m.length>=3){m.forEach(x=>{x.active=false;createExplosion(x.x,x.y)});popSound.play()}resetArrow();checkWin()}});if(arrow.y<40)resetArrow()}
+
+function resetArrow(){arrow.moving=false;arrow.x=canvas.width/2;arrow.y=canvas.height-50;arrow.bubble=randomBubble()}
+
+function checkWin(){if(grid.every(b=>!b.active)){playing=false;document.getElementById('restartMenu').style.display='block'}}
+
+canvas.addEventListener('click',e=>{if(!playing||arrow.moving)return;const r=canvas.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;const a=Math.atan2(y-arrow.y,x-arrow.x);arrow.dx=Math.cos(a)*7;arrow.dy=Math.sin(a)*7;arrow.moving=true})
+
+function loop(){if(!playing)return;ctx.clearRect(0,0,canvas.width,canvas.height);drawHeartBox();drawGrid();drawArrow();updateArrow();drawParticles();requestAnimationFrame(loop)}
+
+function spawnBackgroundHearts(){const c=document.querySelector('.background-hearts');for(let i=0;i<25;i++){const h=document.createElement('span');h.textContent='❤';h.style.left=Math.random()*100+'%';h.style.animationDelay=Math.random()*8+'s';h.style.fontSize=12+Math.random()*20+'px';c.appendChild(h)}}
+
+function startGame(){document.getElementById('startMenu').style.display='none';document.getElementById('restartMenu').style.display='none';canvas.style.display='block';initGrid();playing=true;loop()}
+
+function restartGame(){startGame()}
+
+spawnBackgroundHearts();
+</script></body>
+</html>
