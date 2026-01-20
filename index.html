@@ -12,64 +12,73 @@ body{
   justify-content:center;
   align-items:center;
   height:100vh;
-}.background-hearts span{ position:absolute; color:rgba(255,255,255,0.2); animation:float 9s infinite ease-in-out; }
+}.background-hearts span{ position:absolute; color:rgba(255,255,255,0.25); animation:float 9s infinite ease-in-out; }
 
-@keyframes float{ 0%{transform:translateY(100vh);opacity:0} 50%{opacity:.5} 100%{transform:translateY(-10vh);opacity:0} }
+@keyframes float{ 0%{transform:translateY(100vh) scale(.6);opacity:0} 50%{opacity:.5} 100%{transform:translateY(-10vh) scale(1.2);opacity:0} }
 
-canvas{ background:transparent; }
+canvas{background:transparent}
 
-.menu{ position:absolute; text-align:center; }
+.menu{position:absolute;text-align:center}
 
-button{ background:#ff2f68; border:none; color:white; padding:14px 26px; font-size:18px; border-radius:25px; cursor:pointer; }
+button{ background:#ff2f68; border:none; color:white; padding:14px 28px; font-size:18px; border-radius:30px; cursor:pointer; margin:8px; box-shadow:0 4px 10px rgba(0,0,0,.3) }
 
-.message{ position:absolute; text-align:center; font-size:28px; color:#b3003c; background:rgba(255,255,255,.95); padding:25px 35px; border-radius:22px; display:none; } </style>
+button:hover{transform:scale(1.05)}
+
+.message{ font-size:28px; color:#b3003c; background:rgba(255,255,255,.96); padding:25px 35px; border-radius:22px; margin-bottom:15px; animation:pop .7s ease }
+
+@keyframes pop{0%{transform:scale(.6)}100%{transform:scale(1)}} </style>
 
 </head>
 <body><div class="background-hearts"></div><div class="menu" id="startMenu">
   <button onclick="startGame()">💘 start game 💘</button>
-</div><canvas id="game" width="360" height="520" style="display:none"></canvas>
+</div><canvas id="game" width="360" height="540" style="display:none"></canvas>
 
-<div class="menu" id="restartMenu" style="display:none">
-  <div class="message">💖 Will you be my Valentine Sweetiepie? 💖</div><br>
-  <button onclick="restartGame()">🔁 restart</button>
+<div class="menu" id="endMenu" style="display:none">
+  <div class="message">💖 Will you be my Valentine Sweetiepie? 💖</div>
+  <button onclick="celebrate()">Yes 💖</button>
+  <button onclick="celebrate()">Yes 💍</button>
 </div><script>
 const canvas=document.getElementById('game');
 const ctx=canvas.getContext('2d');
 
 const bubbles=['❤️','🍫','🌹','🧸'];
-const rows=7,cols=7,radius=18;
+const rows=3,cols=3,radius=18;
 let grid=[],particles=[];
-let playing=false;
+let playing=false,pulse=0;
 
-let shooter={x:canvas.width/2,y:canvas.height-40,bubble:rand(),dx:0,dy:0,moving:false};
+let shooter={x:canvas.width/2,y:canvas.height-50,bubble:rand(),dx:0,dy:0,moving:false};
 
 function rand(){return bubbles[Math.floor(Math.random()*bubbles.length)]}
 
 function initGrid(){
   grid=[];
+  const s=42;
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
-      const x=canvas.width/2+(c-cols/2)*40;
-      const y=110+r*38;
+      const x=canvas.width/2+(c-(cols-1)/2)*s;
+      const y=170+r*s;
       grid.push({x,y,bubble:rand(),active:true})
     }
   }
 }
 
 function drawHeartBox(){
-  ctx.lineWidth=10;
+  pulse+=0.04;
+  const p=Math.sin(pulse)*4;
+
+  ctx.lineWidth=12+p/2;
   ctx.strokeStyle='#ff003c';
   ctx.beginPath();
-  ctx.moveTo(180,160);
-  ctx.bezierCurveTo(120,60,0,160,180,360);
-  ctx.bezierCurveTo(360,160,240,60,180,160);
+  ctx.moveTo(180,190);
+  ctx.bezierCurveTo(70,40,-50,190,180,460);
+  ctx.bezierCurveTo(410,190,290,40,180,190);
   ctx.stroke();
 
-  ctx.fillStyle='rgba(255,255,255,0.85)';
+  ctx.fillStyle='rgba(255,255,255,0.88)';
   ctx.beginPath();
-  ctx.moveTo(180,160);
-  ctx.bezierCurveTo(130,80,40,160,180,330);
-  ctx.bezierCurveTo(320,160,230,80,180,160);
+  ctx.moveTo(180,190);
+  ctx.bezierCurveTo(90,80,20,190,180,430);
+  ctx.bezierCurveTo(340,190,270,80,180,190);
   ctx.fill();
 }
 
@@ -92,59 +101,63 @@ function drawShooter(){
   ctx.textAlign='center';
   ctx.fillText('🏹',shooter.x,shooter.y+8);
   ctx.beginPath();
-  ctx.arc(shooter.x,shooter.y-22,radius,0,Math.PI*2);
+  ctx.arc(shooter.x,shooter.y-24,radius,0,Math.PI*2);
   ctx.fillStyle='#fff';
   ctx.fill();
   ctx.font='18px serif';
-  ctx.fillText(shooter.bubble,shooter.x,shooter.y-22);
+  ctx.fillText(shooter.bubble,shooter.x,shooter.y-24);
 }
 
 function flood(start){
   const stack=[start],match=[start];
-  start.visited=true;
+  start.v=true;
   while(stack.length){
     const b=stack.pop();
     grid.forEach(n=>{
-      if(!n.active||n.visited||n.bubble!==start.bubble)return;
-      if(Math.hypot(n.x-b.x,n.y-b.y)<radius*2.2){
-        n.visited=true;
-        stack.push(n);
-        match.push(n);
-      }
+      if(!n.active||n.v||n.bubble!==start.bubble)return;
+      if(Math.hypot(n.x-b.x,n.y-b.y)<radius*2.3){n.v=true;stack.push(n);match.push(n)}
     })
   }
-  grid.forEach(b=>b.visited=false);
+  grid.forEach(b=>b.v=false);
   return match;
 }
 
-function explode(x,y){for(let i=0;i<12;i++)particles.push({x,y,dx:(Math.random()-.5)*5,dy:(Math.random()-.5)*5,l:30})}
+function explode(x,y){for(let i=0;i<16;i++)particles.push({x,y,dx:(Math.random()-.5)*5,dy:(Math.random()-.5)*5,l:35})}
 
-function drawParticles(){particles.forEach(p=>{ctx.fillStyle='rgba(255,77,109,.8)';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();p.x+=p.dx;p.y+=p.dy;p.l--});particles=particles.filter(p=>p.l>0)}
+function drawParticles(){particles.forEach(p=>{ctx.fillStyle='rgba(255,77,109,.85)';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();p.x+=p.dx;p.y+=p.dy;p.l--});particles=particles.filter(p=>p.l>0)}
 
 function updateShooter(){
   if(!shooter.moving)return;
   shooter.x+=shooter.dx;
   shooter.y+=shooter.dy;
 
+  if(shooter.x<30||shooter.x>canvas.width-30) shooter.dx*=-1;
+
   grid.forEach(b=>{
     if(!b.active)return;
     if(Math.hypot(b.x-shooter.x,b.y-shooter.y)<radius*2){
       shooter.moving=false;
-      const placed={x:shooter.x,y:shooter.y,bubble:shooter.bubble,active:true};
+      const placed={x:b.x,y:b.y+42,bubble:shooter.bubble,active:true};
       grid.push(placed);
-      const match=flood(placed);
-      if(match.length>=3){match.forEach(m=>{m.active=false;explode(m.x,m.y)})}
+      const m=flood(placed);
+      if(m.length>=3){m.forEach(x=>{x.active=false;explode(x.x,x.y)})}
       resetShooter();
       checkWin();
     }
   })
 
-  if(shooter.y<80){shooter.moving=false;resetShooter()}
+  if(shooter.y<120){shooter.moving=false;resetShooter()}
 }
 
-function resetShooter(){shooter.x=canvas.width/2;shooter.y=canvas.height-40;shooter.bubble=rand()}
+function resetShooter(){shooter.x=canvas.width/2;shooter.y=canvas.height-50;shooter.bubble=rand()}
 
-function checkWin(){if(grid.every(b=>!b.active)){playing=false;document.getElementById('restartMenu').style.display='block'}}
+function checkWin(){
+  if(grid.every(b=>!b.active)){
+    playing=false;
+    canvas.style.display='none';
+    document.getElementById('endMenu').style.display='block';
+  }
+}
 
 canvas.addEventListener('click',e=>{
   if(!playing||shooter.moving)return;
@@ -165,10 +178,31 @@ function loop(){
   requestAnimationFrame(loop);
 }
 
-function startGame(){document.getElementById('startMenu').style.display='none';document.getElementById('restartMenu').style.display='none';canvas.style.display='block';initGrid();playing=true;loop()}
-function restartGame(){startGame()}
+function startGame(){
+  document.getElementById('startMenu').style.display='none';
+  document.getElementById('endMenu').style.display='none';
+  canvas.style.display='block';
+  initGrid();
+  playing=true;
+  loop();
+}
 
-function spawnHearts(){const c=document.querySelector('.background-hearts');for(let i=0;i<30;i++){const h=document.createElement('span');h.textContent='❤';h.style.left=Math.random()*100+'%';h.style.animationDelay=Math.random()*9+'s';h.style.fontSize=10+Math.random()*18+'px';c.appendChild(h)}}
+function celebrate(){
+  document.getElementById('endMenu').innerHTML='<div class = "message" > Slayyy, love youu!!😘</div>'
+}
+
+function spawnHearts(){
+  const c=document.querySelector('.background-hearts');
+  for(let i=0;i<30;i++){
+    const h=document.createElement('span');
+    h.textContent='❤';
+    h.style.left=Math.random()*100+'%';
+    h.style.animationDelay=Math.random()*9+'s';
+    h.style.fontSize=10+Math.random()*18+'px';
+    c.appendChild(h)
+  }
+}
+
 spawnHearts();
 </script></body>
 </html>
